@@ -20,9 +20,33 @@ def threshold(component, val):
         return zip(*data)
     return [], ()
 
+def threshold_filter_methods(filter_methods, val):
+    r"""Calculate whether feature is over a threshold. """
+
+    i = 0
+    data = []
+    idxs = []
+    #print(filter_methods)
+    for filt in filter_methods:
+        num_keys = len(filt.keys())
+        x = val[i:i + len(filt.keys())]
+        if x[0] > 0.5: # if the first value is over the threshold
+            f = {'name': filt['name']}
+            for j in range(1, len(filt.keys())):
+                key = list(filt.keys())[j]
+                f[key] = filt[key]['min'] + x[j] * (filt[key]['max'] - filt[key]['min'])
+            data.append(f)
+            idxs.append(j-1)
+        i += num_keys
+
+    if (data):
+        return idxs, data
+    return [], []
+    
 def calculate_dimension_of_the_problem(
         hyperparameters,
-        evaluation_metrics,
+        filter_methods,
+        pipeline_evaluation_algorithm,
         optimize_metric_weights=False):
     r"""Calculate the dimension of the problem. """
 
@@ -30,4 +54,13 @@ def calculate_dimension_of_the_problem(
     if optimize_metric_weights:
         metrics_factor = 2
 
-    return (len(hyperparameters) + metrics_factor * len(evaluation_metrics) + 1)
+    num_hyper_parameters = len(hyperparameters)
+    num_filter_methods = len(filter_methods)
+    num_metrics = 0#len(pipeline_evaluation_algorithm) - 1 # TODO currently not optimizing the classifier (KNN)
+    #print("Metrics:", num_metrics)
+    #print(pipeline_evaluation_algorithm)
+    x = 0
+    for filt_method in filter_methods:
+        x += len(filt_method.keys()) - 1
+
+    return 2 + num_hyper_parameters + num_metrics + x + metrics_factor * num_filter_methods
