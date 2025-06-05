@@ -39,20 +39,13 @@ if __name__ == '__main__':
         print(fm.mi(i))
         print(fm.ncfs(i))
 
-
-
-    #exit(1)
-    
-
-    # define which preprocessing methods to use
-    #preprocessing = ["min_max_scaling", "squash_cosine", "z_score_normalization", "remove_highly_correlated_features", "discretization_kmeans"]
-
     # define evolutionary/swarm intelligence algorithms for inner optimization
     algorithms = [ParticleSwarmOptimization(min_velocity=-4, max_velocity=4,seed=cli.seed),
                     DifferentialEvolution(crossover_probability=0.9, differential_weight=0.5,seed=cli.seed),
                     GeneticAlgorithm(crossover=uniform_crossover, mutation=uniform_mutation, crossover_rate=0.9, mutation_rate=0.1,seed=cli.seed), 
                     LpsrSuccessHistoryAdaptiveDifferentialEvolution(seed=cli.seed),
                     SelfAdaptiveDifferentialEvolution(seed=cli.seed)]
+
 
     # define inner algorithms hyperparameters and their min/max values
     hyperparameter1 = {
@@ -64,10 +57,25 @@ if __name__ == '__main__':
     hyperparameter2 = {
         "parameter": "N_FES",
         "min": 2000,
-        "max": 5000
+        "max": 4000
     }
     # create array of hyperparameters
     hyperparameters = [hyperparameter1, hyperparameter2]
+
+    algo_params_1 = {
+        "alg_name": "PSO",
+        "c1" : {"min": 0.5, "max": 2},
+        "c2" : {"min": 0.5, "max": 2},
+    } #2
+
+    algo_params_2 = {
+        "alg_name": "DE",
+        "crossover_probability" : {"min": 0.01, "max": 1},
+        "differential_weight" : {"min": 0.01, "max": 1},
+    } #2
+
+    inner_algorithms_params = [algo_params_1, algo_params_2]
+
 
     # evaluation criteria
 
@@ -91,15 +99,16 @@ if __name__ == '__main__':
 
     inner_filter_methods = [filter_method1, filter_method2, filter_method3, filter_method4]
 
-    pipeline_evaluation_algorithm = "5NN"
+    pipeline_evaluation_algorithm = ""
 
     start_run = time.time()
     AutoFsOptimizer(
-        data=data,
-        inner_algorithms=algorithms,
-        inner_filter_methods=inner_filter_methods,
-        pipeline_evaluation_algorithm=pipeline_evaluation_algorithm,
-        hyperparameters=hyperparameters,
+        data = data,
+        inner_algorithms = algorithms,
+        inner_algorithms_params = inner_algorithms_params,
+        inner_filter_methods = inner_filter_methods,
+        pipeline_evaluation_algorithm = pipeline_evaluation_algorithm,
+        hyperparameters = hyperparameters,
         log_output_file="{}.fs".format(cli.folder),
         log_verbose=True
     ).run(cli.algorithm, cli.popsize, cli.maxfes, cli.seed, cli.dataset,cli.ow)

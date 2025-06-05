@@ -1,7 +1,7 @@
 from niapy.problems import Problem
 from niapy.task import Task, OptimizationType
 import numpy as np
-from niaautofs.utils import calculate_dimension_of_the_problem, float_to_category, float_to_num, threshold_filter_methods
+from niaautofs.utils import calculate_dimension_of_the_problem, float_to_category, float_to_num, float_to_params, threshold_filter_methods
 import copy
 from niaautofs.filter_methods import FilterMethods
 from sklearn.neighbors import KNeighborsClassifier
@@ -39,22 +39,31 @@ class FsProblem(Problem):
         return fitness / sum(self.evaluation_metrics_weights)
 
 class AutoFsProblem(Problem):
-    def __init__(self,data,dataset_name, inner_algorithms, filter_methods, pipeline_evaluation_algorithm,hyperparameters,optimize_evaluation_metrics_weights):
-
+    def __init__(self,data,dataset_name, inner_algorithms, inner_algorithms_params, filter_methods, pipeline_evaluation_algorithm,hyperparameters,optimize_evaluation_metrics_weights):
+        r"""Initialize the feature selection problem."""
+        inner_algorithms_params_dim = 0    
+        for item in inner_algorithms_params:
+            for key in item.keys():
+                if key != "alg_name":
+                    inner_algorithms_params_dim += 1
+                print(key)
+        print("Inner algorithms params dimension:",inner_algorithms_params_dim)
+        
         self.num_vals = sum([len(filter_method.keys()) for filter_method in filter_methods])
-        dimension = calculate_dimension_of_the_problem(hyperparameters, filter_methods,pipeline_evaluation_algorithm, optimize_evaluation_metrics_weights)
-        print("Dimension:",dimension)
-        lower = np.zeros(dimension)
-        lower[1+len(hyperparameters)+self.num_vals:-1] = 0.01
+        dimension = calculate_dimension_of_the_problem(hyperparameters, filter_methods, pipeline_evaluation_algorithm, optimize_evaluation_metrics_weights) + inner_algorithms_params_dim
+        print("Dimension of the AutoFS problem [in_alg,[in_alg_params],hyperparams,filter_methods,metric_weights,alpha]:",dimension)
+        
+        lower = np.zeros(dimension)+0.01
+        lower[-1] = 0.01 #kaj točno tu nastavljam???? 1+len(hyperparameters)+self.num_vals:
         upper = np.ones(dimension)
         upper[-1] = 0.99
-
         super().__init__(dimension, upper=upper, lower=lower)
         
 
         self.data = data
         self.dataset_name = dataset_name
         self.inner_algorithms = inner_algorithms
+        self.inner_algorithms_params = inner_algorithms_params
         self.filter_methods = filter_methods
         self.pipeline_evaluation_algorithm = pipeline_evaluation_algorithm
         self.hyperparameters = hyperparameters
@@ -96,9 +105,32 @@ class AutoFsProblem(Problem):
         r"""Evaluate the feature selection problem."""
 
         inner_algorithm = self.inner_algorithms[float_to_category(
-            self.inner_algorithms, x[0])]
-        
+            self.inner_algorithms, x[0])]        
+        inner_algorithm_name = inner_algorithm.Name[1]
         pos_x = 1
+
+
+        if self.inner_algorithms_params is None or len(self.inner_algorithms_params) == 0:
+            print("No inner algorithms parameters defined, using default parameters for {}".format(inner_algorithm_name))
+        else:
+            for alg_params in self.inner_algorithms_params:
+                if alg_params["alg_name"] == inner_algorithm_name:
+                    inner_alg_p = dict()
+                    for key in alg_params.keys():
+                        if key != "alg_name":
+                            val = x[pos_x]
+                            if isinstance(val, float):
+                                float_to_params(alg_params[key], val)
+                                inner_alg_p[key] = val
+                            pos_x += 1
+                    #print(p)
+                            
+                    inner_algorithm.set_parameters(**inner_alg_p)
+
+                    break
+                else:
+                    pos_x +=alg_params.keys().__len__() - 1 # -1 because alg_name is not a parameter
+
 
         hyperparameters = float_to_num(self.hyperparameters, x[pos_x:pos_x + len(self.hyperparameters)])
 
@@ -143,7 +175,7 @@ class AutoFsProblem(Problem):
             self.best_fitness = fitness
 
             print("\nNew best fitness: {} \n".format(fitness))
-            print("Algorithm: {}".format(inner_algorithm.Name[1]))
+            print("Algorithm: {}".format(inner_algorithm_name))
             print("Hyperparams: {}".format(hyperparameters))
             print("Metrics:")
             for i, metric in enumerate(selected_metrics):

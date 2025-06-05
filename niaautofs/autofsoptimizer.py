@@ -16,9 +16,18 @@ class AutoFsOptimizer:
 
         self.set_parameters(**kwargs)    
 
-    def set_parameters(self, data, inner_algorithms, inner_filter_methods, pipeline_evaluation_algorithm,hyperparameters, log_output_file, log_verbose=False):
+    def set_parameters(self, 
+                       data, 
+                       inner_algorithms, 
+                       inner_algorithms_params, 
+                       inner_filter_methods, 
+                       pipeline_evaluation_algorithm,hyperparameters, 
+                       log_output_file, 
+                       log_verbose=False
+                       ):
         self.data = data
         self.inner_algorithms = inner_algorithms
+        self.inner_algorithms_params = inner_algorithms_params
         self.inner_filter_methods = inner_filter_methods
         self.pipeline_evaluation_algorithm = pipeline_evaluation_algorithm
         self.hyperparameters = hyperparameters
@@ -44,7 +53,8 @@ class AutoFsOptimizer:
         problem = AutoFsProblem(
             data=self.data,
             dataset_name=dataset_name,
-            inner_algorithms=self.inner_algorithms, 
+            inner_algorithms=self.inner_algorithms,
+            inner_algorithms_params=self.inner_algorithms_params,
             filter_methods = self.inner_filter_methods,
             pipeline_evaluation_algorithm=self.pipeline_evaluation_algorithm, 
             hyperparameters=self.hyperparameters, 

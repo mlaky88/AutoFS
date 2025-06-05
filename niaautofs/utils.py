@@ -12,6 +12,11 @@ def float_to_num(component, val):
         parameters[i] = int(int(component[i]['min'] + (int(component[i]['max']) - int(component[i]['min'])) * val[i]))
     return parameters
 
+def float_to_params(component, val):
+    #print(component, val)
+    return component['min'] + (component['max'] - component['min']) * val
+    
+
 
 def threshold(component, val):
     r"""Calculate whether feature is over a threshold. """
