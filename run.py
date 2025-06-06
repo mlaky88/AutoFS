@@ -30,7 +30,7 @@ if __name__ == '__main__':
     data = Dataset("datasets/{}.csv".format(cli.dataset))
     #print(data)
     #print(data.transactions)
-
+    '''
     import numpy as np
     x = [np.array([1, 0, 1, 0, 1, 0, 1, 0]),np.array([1, 0, 1, 0, 1, 0, 1, 1]),np.array([1, 0, 1, 0, 1, 0, 1, 0])]
     fm = niaautofs.filter_methods.FilterMethods(data,"Abalone")
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     for i in x:
         print(fm.mi(i))
         print(fm.ncfs(i))
-
+    '''
     # define evolutionary/swarm intelligence algorithms for inner optimization
     algorithms = [ParticleSwarmOptimization(min_velocity=-4, max_velocity=4,seed=cli.seed),
                     DifferentialEvolution(crossover_probability=0.9, differential_weight=0.5,seed=cli.seed),
@@ -66,15 +66,33 @@ if __name__ == '__main__':
         "alg_name": "PSO",
         "c1" : {"min": 0.5, "max": 2},
         "c2" : {"min": 0.5, "max": 2},
-    } #2
+    }
 
     algo_params_2 = {
         "alg_name": "DE",
         "crossover_probability" : {"min": 0.01, "max": 1},
         "differential_weight" : {"min": 0.01, "max": 1},
-    } #2
+    }
+    
+    algo_params_3 = {
+        "alg_name": "GA",
+        "crossover_rate" : {"min": 0.01, "max": 1},
+        "mutation_rate" : {"min": 0.01, "max": 1},
+    }
 
-    inner_algorithms_params = [algo_params_1, algo_params_2]
+    algo_params_4 = {
+        "alg_name": "L-SHADE",
+        "pbest_factor": {"min": 0.11, "max": 0.20},
+        "hist_mem_size" : {"min": 6, "max": 12, 'type': int},
+    }
+
+    algo_params_5 = {
+        "alg_name": "jDE",
+        "crossover_probability" : {"min": 0.01, "max": 1},
+        "differential_weight" : {"min": 0.01, "max": 1},
+    }
+
+    inner_algorithms_params = [algo_params_1, algo_params_2,algo_params_3, algo_params_4]
 
 
     # evaluation criteria
@@ -82,20 +100,20 @@ if __name__ == '__main__':
     filter_method1 = {  # chromosome encoding : presence, val for all params
         "name": "mi",
         "beta": {"min": 0, "max": 1}
-    } #2
+    }
     filter_method2 = {
         "name": "mrmr",
         "alpha": {"min": 0.75, "max": 1}, # < 45 features otherwise [1.5,2]
         "beta": {"min": 0, "max": 1}
-    } #3
+    }
     filter_method3 = {
         "name": "ncfs",
         "beta": {"min": 0.05, "max": 0.5}
-    } #2
+    }
     filter_method4 = {
         "name": "relevance_penalty",
         "alpha": {"min": 0.05, "max": 0.5}
-    } #2
+    }
 
     inner_filter_methods = [filter_method1, filter_method2, filter_method3, filter_method4]
 

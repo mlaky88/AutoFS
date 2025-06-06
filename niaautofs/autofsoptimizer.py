@@ -1,9 +1,21 @@
 from niapy.util.factory import get_algorithm
 from niapy.task import Task, OptimizationType
 from niaautofs.autofsproblem import AutoFsProblem
+from niapy.callbacks import Callback
 
 __all__ = ['AutoFsOptimizer']
 
+
+class PrintPopulation(Callback):
+    def __init__(self):
+        print("Population print callback initialized")
+        super().__init__()
+
+    def before_run(self):
+        return super().before_run()
+
+    def after_iteration(self, population, fitness, best_x, best_fitness, **params):
+        print(population)
 
 class AutoFsOptimizer:
     def __init__(self, **kwargs):
@@ -49,6 +61,7 @@ class AutoFsOptimizer:
     def run(self, outer_algorithm, population_size, max_evals, seed, dataset_name, optimize_evaluation_metrics_weights=False):
 
         algorithm = get_algorithm(outer_algorithm,population_size=population_size,seed=seed)
+        #algorithm.callbacks = PrintPopulation()
 
         problem = AutoFsProblem(
             data=self.data,

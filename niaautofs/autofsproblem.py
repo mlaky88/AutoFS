@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from niaautofs.dataset import Dataset
-
+from niaautofs.fspipeline import FsPipeline
 
 class FsProblem(Problem):
     def __init__(self, dataset, evaluation_metrics, evaluation_metrics_weights,dataset_name):
@@ -46,12 +46,12 @@ class AutoFsProblem(Problem):
             for key in item.keys():
                 if key != "alg_name":
                     inner_algorithms_params_dim += 1
-                print(key)
+                #print(key)
         print("Inner algorithms params dimension:",inner_algorithms_params_dim)
         
         self.num_vals = sum([len(filter_method.keys()) for filter_method in filter_methods])
         dimension = calculate_dimension_of_the_problem(hyperparameters, filter_methods, pipeline_evaluation_algorithm, optimize_evaluation_metrics_weights) + inner_algorithms_params_dim
-        print("Dimension of the AutoFS problem [in_alg,[in_alg_params],hyperparams,filter_methods,metric_weights,alpha]:",dimension)
+        print("Dimension of the AutoFS problem [in_alg,[in_alg_params],in_alg_hyperparams,filter_methods,[metric_weights],alpha]:",dimension)
         
         lower = np.zeros(dimension)+0.01
         lower[-1] = 0.01 #kaj točno tu nastavljam???? 1+len(hyperparameters)+self.num_vals:
@@ -71,12 +71,15 @@ class AutoFsProblem(Problem):
 
         self.best_solution = None
         self.best_fitness = -np.inf
+        self.best_pipeline = None
 
         train_data, test_data, y_train, y_test = train_test_split(self.data.transactions.drop(columns="class"),self.data.transactions["class"] ,test_size=0.3, random_state=42, stratify=self.data.transactions["class"])
         train_data.insert(0,"class",y_train)
         test_data.insert(0,"class",y_test)
         self.train_data = Dataset(train_data)
         self.test_data = Dataset(test_data)
+
+        self.log_verbose = True
 
     def get_best_solution(self):
         return self.best_solution
@@ -98,7 +101,7 @@ class AutoFsProblem(Problem):
 
         num_selected = sum([1 if xi >= 0.5 else 0 for xi in x])  
 
-        print("fit(x) = acc({:.4f}) * {:.4f} - ({:.4f}) * ({} / {})".format(accuracy,alpha,1-alpha,num_selected,len(x)))
+        #print("fit(x) = acc({:.4f}) * {:.4f} - ({:.4f}) * ({} / {})".format(accuracy,alpha,1-alpha,num_selected,len(x)))
         return accuracy * alpha - (1-alpha) * (num_selected / len(x))
 
     def _evaluate(self, x):
@@ -109,19 +112,18 @@ class AutoFsProblem(Problem):
         inner_algorithm_name = inner_algorithm.Name[1]
         pos_x = 1
 
-
+        inner_alg_p = dict()
         if self.inner_algorithms_params is None or len(self.inner_algorithms_params) == 0:
             print("No inner algorithms parameters defined, using default parameters for {}".format(inner_algorithm_name))
         else:
             for alg_params in self.inner_algorithms_params:
                 if alg_params["alg_name"] == inner_algorithm_name:
-                    inner_alg_p = dict()
+                    
                     for key in alg_params.keys():
                         if key != "alg_name":
                             val = x[pos_x]
-                            if isinstance(val, float):
-                                float_to_params(alg_params[key], val)
-                                inner_alg_p[key] = val
+                            if isinstance(val, float): 
+                                inner_alg_p[key] = float_to_params(alg_params[key], val)
                             pos_x += 1
                     #print(p)
                             
@@ -171,19 +173,34 @@ class AutoFsProblem(Problem):
         
         fitness = self.calculate_fitness(best_solution, alpha)
         if fitness > self.best_fitness:
+            self.best_pipeline = FsPipeline(
+                algorithm=inner_algorithm_name,
+                algorithm_parameters=inner_alg_p,
+                hyperparameters=hyperparameters,
+                filter_methods=selected_metrics,
+                filter_method_weights=metrics_weights,
+                selected_features=best_solution,
+                fitness=fitness,
+                alpha=alpha
+            )
+
+            #print("Best pipeline:", self.best_pipeline)
+
             self.best_solution = best_solution
             self.best_fitness = fitness
-
-            print("\nNew best fitness: {} \n".format(fitness))
-            print("Algorithm: {}".format(inner_algorithm_name))
-            print("Hyperparams: {}".format(hyperparameters))
-            print("Metrics:")
-            for i, metric in enumerate(selected_metrics):
-                for key in metric.keys():
-                    if key == "name":
-                        print("\t{}({:.3f}): ".format(metric[key],metrics_weights[i]),end="")
-                    else:
-                        print("{}={:.4f} ".format(key, metric[key]),end="")     
-                print()
-
+            if self.log_verbose:
+                print(self.best_pipeline)
+                '''
+                print("\nNew best fitness: {} \n".format(fitness))
+                print("Algorithm: {}".format(inner_algorithm_name))
+                print("Hyperparams: {}".format(hyperparameters))
+                print("Metrics:")
+                for i, metric in enumerate(selected_metrics):
+                    for key in metric.keys():
+                        if key == "name":
+                            print("\t{}({:.3f}): ".format(metric[key],metrics_weights[i]),end="")
+                        else:
+                            print("{}={:.4f} ".format(key, metric[key]),end="")     
+                    print()
+                '''
         return fitness

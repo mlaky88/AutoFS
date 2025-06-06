@@ -13,9 +13,13 @@ def float_to_num(component, val):
     return parameters
 
 def float_to_params(component, val):
-    #print(component, val)
-    return component['min'] + (component['max'] - component['min']) * val
-    
+    param = 0
+    if 'type' in component:
+        param = int(component['min'] + (component['max'] - component['min']) * val)
+    else:
+        param = component['min'] + (component['max'] - component['min']) * val
+        
+    return param
 
 
 def threshold(component, val):
